@@ -1,1 +1,1 @@
-# PEF-HNN
+# Permutation Equivariant Framelet-based Hypergraph Neural Networks
