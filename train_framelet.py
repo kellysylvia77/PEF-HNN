@@ -2,8 +2,6 @@
 # coding: utf-8
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 import random
 import math
 
@@ -34,8 +32,8 @@ def scipy_to_torch_sparse(A):
     value = torch.Tensor(A.data)
 
     return torch.sparse_coo_tensor(index, value, A.shape)
+    
 # function for pre-processing
-# 使用切比雪夫多项式对滤波函数进行近似，得到多项式系数
 def ChebyshevApprox(f, n):  # assuming f : [0, pi] -> R
     quad_points = 500
     c = np.zeros(n)
@@ -48,7 +46,6 @@ def ChebyshevApprox(f, n):  # assuming f : [0, pi] -> R
 
     return c
 
-# 使用滤波器的切比雪夫近似系数和图拉普拉斯矩阵  L 来构建未抽取小波变换的矩阵操作符
 def get_operator(L, DFilters, n, s, J, Lev):
     r = len(DFilters)
     c = [None] * r
@@ -56,7 +53,7 @@ def get_operator(L, DFilters, n, s, J, Lev):
         c[j] = ChebyshevApprox(DFilters[j], n)
     a = np.pi / 2  # consider the domain of masks as [0, pi]
     # Fast Tight Frame Decomposition (FTFD)
-    FD1 = sparse.identity(L.shape[0]) # # 初始的紧框架分解矩阵（单位矩阵）
+    FD1 = sparse.identity(L.shape[0]) # 
     d = dict()
     for l in range(1, Lev + 1):
         for j in range(r):
@@ -67,7 +64,7 @@ def get_operator(L, DFilters, n, s, J, Lev):
                 TkF = ((2 / a * s ** (-J + l - 1)) * L) @ T1F - 2 * T1F - T0F
                 T0F = T1F
                 T1F = TkF
-                d[j, l - 1] += c[j][k] * TkF  #表示在第 l 层和第 j 个滤波器的情况下，通过一系列线性组合（使用切比雪夫近似系数）和图拉普拉斯矩阵 L 构建的矩阵操作符。
+                d[j, l - 1] += c[j][k] * TkF  
         FD1 = d[0, l - 1]
 
     return d
@@ -295,100 +292,25 @@ def setup_seed(seed):
     torch.cuda._initialized = True
 
 if __name__ == '__main__':
-    
-    types = 'all' # highpass, lowpass
 
-    # param = {'datamatrix': 'cora_ca2-8', 'dataset': 'coauthor_cora', 'All_num_layers': 64, 'nhid': 512,
-    #           'lr': 0.002, 'wd': 1e-3, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.2, 'lamda': 0.6, 'seed': 50,
-    #           'dropout': 0.7, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 10} # 85.54 ± 0.74
-    # param = {'datamatrix': 'dblp2-13', 'dataset': 'coauthor_dblp', 'All_num_layers': 2, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-5, 'Lev': 1, 'alpha': 0.5, 'gamma': 0.5, 'lamda': 0.1, 'seed': 1000,
-    #          'dropout': 0.7, 'feature_noise': '0', 'patience': 200}  #
-    # param = {'datamatrix': 'cora2-5', 'dataset': 'cora', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-3, 'Lev': 1, 'alpha': 0.2, 'gamma': 0.2, 'lamda': 0.3, 'seed': 50,
-    #          'dropout': 0.7, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 1}  # 81.51 ± 0.98
-    param = {'datamatrix': 'citeseer2-6', 'dataset': 'citeseer', 'All_num_layers': 16, 'nhid': 512,
-             'lr': 0.002, 'wd': 1e-5, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.4, 'lamda': 0.5, 'seed': 500,
-             'dropout': 0.5, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-             'runs_star': 0, 'runs_end': 10}  # 74.96 ± 1.77
-    # param = {'datamatrix': 'house2-8', 'dataset': 'house-committees-100', 'All_num_layers': 8, 'nhid': 512,
-    #          'lr': 0.003, 'wd': 2e-3, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.5, 'lamda': 0.8, 'seed': 500,
-    #          'dropout': 0.6, 'feature_noise': '1', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 1}  # 73.25 ± 1.55
-    # param = {'datamatrix': 'senate2-6', 'dataset': 'senate-committees-100', 'All_num_layers': 8, 'nhid': 256,
-    #          'lr': 0.002, 'wd': 1e-5, 'Lev': 1, 'alpha': 0.8, 'gamma': 0.9, 'lamda': 0.1, 'seed': 200,
-    #          'dropout': 0.8, 'feature_noise': '1', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 1}  # 68.45 ± 6.84
-
-    # param = {'datamatrix': 'ModelNet402-11', 'dataset': 'ModelNet40', 'All_num_layers': 4, 'nhid': 256,
-    #           'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.4, 'gamma': 0.4, 'lamda': 0.7, 'seed': 50,
-    #           'dropout': 0.4, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 10}  #
-
-    # param = {'datamatrix': 'ModelNet40_mvcnn2-8_3-1', 'dataset': 'ModelNet40_mvcnn', 'All_num_layers': 4, 'nhid': 256,
-    #           'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.4, 'gamma': 0.4, 'lamda': 0.7, 'seed': 50,
-    #           'dropout': 0.4, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 10}  92.07 ± 0.44
-
-    # param = {'datamatrix': 'ModelNet40_gvcnn2-10', 'dataset': 'ModelNet40_gvcnn', 'All_num_layers': 4, 'nhid': 256,
-    #           'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.4, 'gamma': 0.4, 'lamda': 0.7, 'seed': 50,
-    #           'dropout': 0.4, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 10}  # 97.15 ± 0.28
-
-    # param = {'datamatrix': 'ModelNet40_mgvcnn2-10', 'dataset': 'ModelNet40_mgvcnn', 'All_num_layers': 4, 'nhid': 256,
-    #           'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.4, 'gamma': 0.4, 'lamda': 0.7, 'seed': 50,
-    #           'dropout': 0.4, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 10}  # 98.80 ± 0.14
-
-    # param = {'datamatrix': 'NTU20122-9', 'dataset': 'NTU2012', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.5, 'gamma': 0.5, 'lamda': 0.1, 'seed': 200,
-    #          'dropout': 0.2, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 1}  # 90.04 ± 1.33
-
-    # param = {'datamatrix': 'NTU2012_gvcnn2-6_3-1', 'dataset': 'NTU2012_gvcnn', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.5, 'gamma': 0.5, 'lamda': 0.1, 'seed': 200,
-    #          'dropout': 0.2, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 10}  # NTU2012_gvcnn2-6_3-1: 93.32 ± 1.04 /
-
-    # param = {'datamatrix': 'NTU2012_mvcnn2-8', 'dataset': 'NTU2012_mvcnn', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.5, 'gamma': 0.5, 'lamda': 0.1, 'seed': 200,
-    #          'dropout': 0.2, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 10}  # ±
-
-    # param = {'datamatrix': 'NTU2012_mgvcnn2-8', 'dataset': 'NTU2012_mgvcnn', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.002, 'wd': 1e-4, 'Lev': 1, 'alpha': 0.5, 'gamma': 0.5, 'lamda': 0.1, 'seed': 200,
-    #          'dropout': 0.2, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 10}  # 91.37 ± 1.58
-
-    # param = {'datamatrix': 'twitch2-11', 'dataset': 'twitch', 'All_num_layers': 4, 'nhid': 512,
-    #          'lr': 0.003, 'wd': 2e-4, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.1, 'lamda': 0.8, 'seed': 50,
-    #          'dropout': 0.1, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #          'runs_star': 0, 'runs_end': 10}  #
-
-    # param = {'datamatrix': 'actor2-10', 'dataset': 'actor', 'All_num_layers': 4, 'nhid': 512,
-    #           'lr': 0.003, 'wd': 2e-4, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.1, 'lamda': 0.8, 'seed': 50,
-    #           'dropout': 0.1, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
-    #           'runs_star': 0, 'runs_end': 1}  #
+    param = {'datamatrix': 'cora_ca2-8', 'dataset': 'coauthor_cora', 'All_num_layers': 64, 'nhid': 512,
+             'lr': 0.002, 'wd': 1e-3, 'Lev': 1, 'alpha': 0.1, 'gamma': 0.2, 'lamda': 0.6, 'seed': 50,
+             'dropout': 0.7, 'feature_noise': '0', 'patience': 200, 'add_self_loop': True,
+             'runs_star': 0, 'runs_end': 10} 
 
     args = utils.parse_args(param)
 
     # # Part 1: Load data
 
     ### Load and preprocess data ###
-    existing_dataset = ['20newsW100', 'ModelNet40', 'zoo',
-                        'NTU2012', 'Mushroom', 'actor', 'amazon', 'twitch', 'pokec',
+    existing_dataset = ['actor', 'amazon', 'twitch', 'pokec',
                         'coauthor_cora', 'coauthor_dblp',
-                        'cofriend_pokec', 'cocreate_twitch', 'cooccurence_actor', 'copurchasing_amazon',
-                        'yelp', 'amazon-reviews', 'walmart-trips', 'house-committees',
-                        'walmart-trips-100', 'house-committees-100',
-                        'cora', 'citeseer', 'pubmed', 'senate-committees-100', 'congress-bills-100',
+                        'house-committees-100', 'senate-committees-100', 
+                        'cora', 'citeseer', 'pubmed', 
                         'NTU2012_mvcnn', 'NTU2012_gvcnn', 'ModelNet40_mvcnn', 'ModelNet40_gvcnn',
                         'NTU2012_mgvcnn', 'ModelNet40_mgvcnn']
 
-    synthetic_list = ['amazon-reviews', 'walmart-trips', 'house-committees', 'walmart-trips-100',
-                      'house-committees-100', 'senate-committees-100', 'congress-bills-100']
+    synthetic_list = ['house-committees-100', 'senate-committees-100']
 
     if args.dname in existing_dataset:
         dname = args.dname
@@ -403,18 +325,6 @@ if __name__ == '__main__':
                 p2raw = './data/AllSet_all_raw_data/cocitation/'
             elif dname in ['coauthor_cora', 'coauthor_dblp']:
                 p2raw = './data/AllSet_all_raw_data/coauthorship/'
-            # elif dname in ['cofriend_pokec']:
-            #     p2raw = './data/AllSet_all_raw_data/cofriendship/'
-            # elif dname in ['cocreate_twitch']:
-            #     p2raw = './data/AllSet_all_raw_data/cocreate/'
-            # elif dname in ['cooccurence_actor']:
-            #     p2raw = './data/AllSet_all_raw_data/cooccurence/'
-            # elif dname in ['copurchasing_amazon']:
-            #     p2raw = './data/AllSet_all_raw_data/copurchasing/'
-            # elif dname in ['yelp']:
-            #     p2raw = './data/AllSet_all_raw_data/yelp/'
-            # elif dname in ['actor', 'amazon', 'twitch', 'pokec']:
-            #     p2raw = './data/AllSet_all_raw_data/' + dname
             else:
                 p2raw = './data/AllSet_all_raw_data/'
             # print(p2raw)
@@ -444,7 +354,7 @@ if __name__ == '__main__':
     x = data.x
 
     if args.add_self_loop:
-        data = Add_Self_Loops(data)  # 添加自环
+        data = Add_Self_Loops(data)  
 
     # print("num_classes:", args.n_cls )
     print("x", x)
@@ -456,7 +366,7 @@ if __name__ == '__main__':
     # 替换1
     num_nodes = H.shape[0]
     # print("Number of nodes: ", num_nodes)
-    L, adj = compute_L(H)  # [2708,2708]
+    L, adj = compute_L(H)  
     # print("L.shape:", L.shape)
     L = sparse.coo_matrix(L, shape=(num_nodes, num_nodes))
     # print("L.shape:", L.shape)
@@ -508,26 +418,11 @@ if __name__ == '__main__':
     #         d_list.append(scipy_to_torch_sparse(d[i, l]).to(device))
 
     import scipy
-    path = '/home/wangy/code/HyperUFG/FrameletMatrix/'
-    # path = 'G:/华为电脑备份/0 浙江师范大学/0 博士期间论文集/合作论文6/HyperUFG/FrameletMatrix/'
+    path = './FrameletMatrix/'
     cora = scipy.sparse.load_npz(path + param['datamatrix'] + '.npz')
     # print(cora.shape)
-    # print(cora[0].shape)
-    if types == 'highpass':
-        cora = cora[1:]
-    elif types == 'lowpass':
-        cora = cora[0]
-    print(cora.shape)
     dcora = cora.T * cora
     d_list = [scipy_to_torch_sparse(dcora).to(device)]
-
-    # import scipy.sparse as sp
-    # tmp_coo = sp.coo_matrix(dcora)
-    # values = tmp_coo.data
-    # indices = np.vstack((tmp_coo.row, tmp_coo.col))
-    # i = torch.LongTensor(indices)
-    # v = torch.LongTensor(values)
-    # d = torch.sparse_coo_tensor(i, v, tmp_coo.shape).cuda()
 
     learning_rate = args.lr
     weight_decay = args.wd
@@ -548,8 +443,6 @@ if __name__ == '__main__':
     else:
         device = torch.device('cpu')
     # # Part 2: Load model
-
-
 
     # # Part 3: Main. Training + Evaluation
 
@@ -620,7 +513,7 @@ if __name__ == '__main__':
         model = model.to(device)
         data = data.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
-        early_stopping = EarlyStopping(patience=param['patience'], min_delta=1e-4)  # 重新初始化早停机制
+        early_stopping = EarlyStopping(patience=param['patience'], min_delta=1e-4)  
         best_val = float('-inf')
 
         model.train()
@@ -647,47 +540,7 @@ if __name__ == '__main__':
             result = evaluate(model, data, d_list, split_idx, eval_func, result)
             # print(result)
             logger.add_result(run, result[:3])
-
-            if epoch % 100 == 0:
-                # 作图
-                import matplotlib.pyplot as plt
-                from sklearn.manifold import TSNE
-
-                plt.rcParams["font.sans-serif"] = ["Times New Roman"]
-                plt.rcParams["axes.unicode_minus"] = False
-                plt.rcParams['hatch.linewidth'] = 1.5
-
-                plt.rcParams['savefig.dpi'] = 2048  # 保存图片分辨率
-                plt.rcParams['figure.dpi'] = 2048  # 分辨率
-
-                plt.figure(figsize=(7, 7), dpi=2048)
-
-                # font1_size = 18
-                # font2_size = 22
-                font3_size = 26
-
-                z = TSNE(n_components=2).fit_transform(result[-1].detach().cpu().numpy())
-
-                plt.xticks([])
-                plt.yticks([])
-
-                # plt.xticks(fontsize=font1_size)
-                # plt.yticks(fontsize=font1_size)
-                # plt.ylabel('Accuracy(%)', fontsize=font2_size)
-                # plt.xticks(x, labels=labels, fontsize=font2_size)
-                # plt.legend(fontsize=font3_size)
-                # plt.title('PEF-HNN', fontsize=font3_size)
-
-                plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.detach().cpu().numpy(), cmap="Set3")
-                root_save = '/home/wangy/code/Visualization/Feature Visualization/'
-                plt.savefig(root_save + str(run) + '_' + str(epoch) + param['dataset'] + '_' + 'PEF-HNN' + '.pdf', bbox_inches='tight')
-
-            # results[run].append(result[:3])
-            # result_test = 100 * torch.tensor(result[2])
-            # result_val = 100 * torch.tensor(result[1])
-            # result_tests.append(result_test)
-            # result_vals.append(result_val)
-
+            
             train_acc_tensor[run, epoch] = result[0]
             val_acc_tensor[run, epoch] = result[1]
             test_acc_tensor[run, epoch] = result[2]
@@ -709,42 +562,12 @@ if __name__ == '__main__':
 
                 break
 
-        # results_new = 100 * torch.tensor(results)
-        # argmax = results_new[:, 1].argmax().item()
-        # best_test.append(results_new[argmax, 2].item())
-        # mean_test, std_test = np.mean(best_test), np.std(best_test)
-
-        # results_new = [100 * torch.tensor(results[r]) for r in results]
-        #
-        # best_results = []
-        # for r in results_new:
-        #     train1 = r[:, 0].max().item()
-        #     valid = r[:, 1].max().item()
-        #     train2 = r[r[:, 1].argmax(), 0].item()
-        #     test = r[r[:, 1].argmax(), 2].item()
-        #     best_results.append((train1, valid, train2, test))
-        #
-        # best_result = torch.tensor(best_results)
-        # r = best_result[:, 3]
-        # best_test.append(r)
-        best_val, best_test = logger.print_statistics()
-        mean_tests.append(best_test.mean().item())
-        std_tests.append(best_test.std().item())
-        data_frame = pd.DataFrame(
-            data={'mean_tests': mean_tests, 'std_tests': std_tests}, index=range(1, len(mean_tests) + 1))
-        data_frame.to_csv('/home/wangy/code/HyperUFG/results/' + str(args.dname) + '_' + str(types) + '.csv',
-                          index_label='i')
-        # logger.print_statistics(run)
-
     ### Save results ###
     best_val, best_test = logger.print_statistics()
     res_root = 'results'
     if not osp.isdir(res_root):
         os.makedirs(res_root)
     res_root = '{}/layer_{}'.format(res_root, args.All_num_layers)
-    # if not osp.isdir(res_root):
-    #     os.makedirs(res_root)
-    # res_root = '{}/{}'.format(res_root, args.method)
     if not osp.isdir(res_root):
         os.makedirs(res_root)
 
@@ -776,6 +599,7 @@ if __name__ == '__main__':
         pickle.dump(data, handle, protocol=4)
 
     print('All done! Exit python code')
+
 
 
 
