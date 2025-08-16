@@ -336,7 +336,7 @@ if __name__ == '__main__':
         data = dataset.data
         num_features = dataset.num_features
         n_cls = dataset.num_classes
-        if args.dname in ['yelp', 'walmart-trips', 'senate-committees', 'house-committees', 'walmart-trips-100', 'house-committees-100']:
+        if args.dname in ['walmart-trips-100', 'house-committees-100']:
             #         Shift the y label to start with 0
             args.num_classes = len(data.y.unique())  # data.y存储的是labels
             data.y = data.y - data.y.min()
@@ -408,7 +408,7 @@ if __name__ == '__main__':
     r = 1
 
     # get matrix operators
-    # d = get_operator(L, DFilters, n, s, J, Lev)  # J传入的是nan?
+    # d = get_operator(L, DFilters, n, s, J, Lev)  
     # enhance sparseness of the matrix operators (optional)
     # d[np.abs(d) < 0.001] = 0.0
     # store the matrix operators (torch sparse format) into a list: row-by-row
@@ -599,6 +599,7 @@ if __name__ == '__main__':
         pickle.dump(data, handle, protocol=4)
 
     print('All done! Exit python code')
+
 
 
 
